@@ -26,7 +26,7 @@ users = db.users
 # users = db.users
 
 
-api_token = "1348518529:AAFg_7fSGQdNd78xQo3xWxtRWMJHCTG2OVw"
+api_token = "TOKEN"
 
 bot = aiogram.Bot(api_token)
 dispatcher = aiogram.Dispatcher(bot)
