@@ -1,0 +1,3 @@
+
+class IHandler:
+    async def process(self, data): ...

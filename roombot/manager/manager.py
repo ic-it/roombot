@@ -5,8 +5,11 @@ from dataclasses import dataclass
 from .actions_with_user import ActionsWithUser
 from roombot.types.room import RoomsStack
 from roombot.types.dataclasses import User
-from roombot.types.handler import MessageHandlersStack, CallbackHandlersStack
+from roombot.types.handler import MessageHandlersStack, CallbackHandlersStack, ErrorHandlerStack
 from roombot.interfaces.IUsersTable import IUsersTable
+from roombot.interfaces.IMassageHandler import IMessageHandler
+from roombot.interfaces.ICallbackHandler import ICallbackHandler
+from roombot.interfaces.IErrorHandler import IErrorHandler
 from roombot.rooms_container.rooms_container import RoomsContainer
 from roombot.utils.runfunc import run_func_as_async, get_kwargs_by_annotations, get_only_the_required_arguments
 from .default_message_handlers import MainMessageHandler, UserMigrationMessageRoom, CheckUserMessageHandler
@@ -32,6 +35,7 @@ class HandlersHab:
     """
     message: MessageHandlersStack
     callback: CallbackHandlersStack
+    error: ErrorHandlerStack
 
 
 class RoomsManager:
@@ -54,7 +58,7 @@ class RoomsManager:
         self.users = users
         self.rooms = RoomsStack()
         self.internal_data = ManagerInternalData(start_room, default_permissions, {}, {})
-        self.handlers = HandlersHab(MessageHandlersStack(), CallbackHandlersStack())
+        self.handlers = HandlersHab(MessageHandlersStack(), CallbackHandlersStack(), ErrorHandlerStack())
         self.actions_with_user = ActionsWithUser(self.users, self.internal_data, self.rooms)
         self.default_handlers_included = False
         if include_default_handlers:
@@ -64,14 +68,16 @@ class RoomsManager:
         if self.default_handlers_included:
             return
         check_user_handler_message = CheckUserMessageHandler(self.users, self.internal_data)
-        main_handler_message = MainMessageHandler(self.users, self.rooms, self.internal_data, self.actions_with_user.go_to_room)
+        main_handler_message = MainMessageHandler(self.users, self.rooms, self.internal_data,
+                                                  self.actions_with_user.go_to_room)
         user_migration_handler_message = UserMigrationMessageRoom(self.users, self.rooms, self.internal_data,
-                                                          self.actions_with_user.user_can_go_to_room)
+                                                                  self.actions_with_user.user_can_go_to_room)
 
         check_user_handler_callback = CheckUserCallbackHandler(self.users, self.internal_data)
-        main_handler_callback = MainCallbackHandler(self.users, self.rooms, self.internal_data, self.actions_with_user.go_to_room)
+        main_handler_callback = MainCallbackHandler(self.users, self.rooms, self.internal_data,
+                                                    self.actions_with_user.go_to_room)
         user_migration_handler_callback = UserMigrationCallbackRoom(self.users, self.rooms, self.internal_data,
-                                                          self.actions_with_user.user_can_go_to_room)
+                                                                    self.actions_with_user.user_can_go_to_room)
 
         self.handlers.message.add(check_user_handler_message)
         self.handlers.message.add(main_handler_message)
@@ -86,23 +92,38 @@ class RoomsManager:
     def append_rooms(self, rooms_container: RoomsContainer):
         self.rooms.add(rooms_container.rooms)
 
-    def add_message_handler(self, handler: Any):
+    def add_message_handler(self, handler: IMessageHandler):
         self.handlers.message.add(handler)
+
+    def add_error_handler(self, handler: IErrorHandler):
+        self.handlers.error.add(handler)
+
+    def add_callback_handler(self, handler: ICallbackHandler):
+        self.handlers.callback.add(handler)
 
     def add_global_parameters(self, **kwargs):
         self.internal_data.global_parameters.update(kwargs)
 
     async def process_message(self, message: aiogram.types.Message):
         for handler in self.handlers.message.get_all():
-            kwargs = get_kwargs_by_annotations(handler, {aiogram.types.Message: message
-                                                         })
+            all_args = {
+                aiogram.types.Message: message
+            }
+            kwargs = get_kwargs_by_annotations(handler, all_args)
             await run_func_as_async(handler, **kwargs)
 
     async def process_callback(self, callback: aiogram.types.CallbackQuery):
         for handler in self.handlers.callback.get_all():
             all_args = {
                 aiogram.types.CallbackQuery: callback
-             }
+            }
             kwargs = get_kwargs_by_annotations(handler, all_args)
             await run_func_as_async(handler, **kwargs)
 
+    async def process_error(self, exception: Exception):
+        for handler in self.handlers.error.get_all():
+            all_args = {
+                Exception: exception
+            }
+            kwargs = get_kwargs_by_annotations(handler, all_args)
+            await run_func_as_async(handler, **kwargs)

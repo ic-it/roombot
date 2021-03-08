@@ -1,17 +1,21 @@
 from typing import Any, List
 from roombot.interfaces.IMassageHandler import IMessageHandler
 from roombot.interfaces.ICallbackHandler import ICallbackHandler
+from roombot.interfaces.IErrorHandler import IErrorHandler
+from roombot.interfaces.IHandler import IHandler
 
 
 class Handler:
     function: Any
     handler_type: int
     content_type: List[str]
+    room_filter: Any
 
-    def __init__(self, h_type: int, content_type: List[str], func: Any):
+    def __init__(self, h_type: int, content_type: List[str], func: Any, room_filter: (Any or None)):
         self.content_type = content_type
         self.handler_type = h_type
         self.function = func
+        self.room_filter = room_filter
 
 
 class HandlersTypes:
@@ -48,48 +52,34 @@ class HandlersTypes:
         return False
 
 
-class MessageHandlersStack:
-    """
-    Это все комнаты для обработки сообщений.
-    """
-    message_handlers: List[IMessageHandler]
+class HandlersStack:
+    handlers_interface: IHandler = IHandler
+    handlers: List[handlers_interface]
 
-    def __init__(self, *handlers):
-        self.message_handlers = []
-        self.message_handlers += handlers
+    def __init__(self):
+        self.handlers = []
 
-    def add(self, handler: IMessageHandler):
-        self.message_handlers.append(handler)
-        return self
-
-    def get_all(self):
-        loaded_handlers = []
-        for i in self.message_handlers:
-            if not isinstance(i, IMessageHandler):
-                continue
-            loaded_handlers.append(i.process_message)
-        return loaded_handlers
-
-
-class CallbackHandlersStack:
-    """
-    Это все комнаты для обработки callback.
-    """
-    callback_handlers: List[ICallbackHandler]
-
-    def __init__(self, *handlers):
-        self.callback_handlers = []
-        self.callback_handlers += handlers
-
-    def add(self, handler: ICallbackHandler):
-        self.callback_handlers.append(handler)
-        return self
+    def add(self, handler: handlers_interface):
+        if not isinstance(handler, self.handlers_interface):
+            raise Exception("Incorrect handler type")
+        else:
+            self.handlers.append(handler)
+            return self
 
     def get_all(self):
         loaded_handlers = []
-        for i in self.callback_handlers:
-            if not isinstance(i, ICallbackHandler):
-                continue
-            loaded_handlers.append(i.process_callback)
+        for i in self.handlers:
+            loaded_handlers.append(i.process)
         return loaded_handlers
 
+
+class MessageHandlersStack(HandlersStack):
+    handlers_interface: IMessageHandler = IMessageHandler
+
+
+class CallbackHandlersStack(HandlersStack):
+    handlers_interface: ICallbackHandler = ICallbackHandler
+
+
+class ErrorHandlerStack(HandlersStack):
+    handlers_interface: IErrorHandler = IErrorHandler

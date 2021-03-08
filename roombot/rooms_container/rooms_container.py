@@ -11,7 +11,7 @@ class RoomsContainer:
     def __init__(self):
         self.rooms = []
 
-    def add_room(self, name: str, room_type: int, content_type=None, permissions=None, **kwargs):
+    def add_room(self, name: str, room_type: int, content_type=None, permissions=None, room_filter=None, **kwargs):
         if content_type is None:
             content_type = []
         if permissions is None:
@@ -29,7 +29,7 @@ class RoomsContainer:
                     raise Exception("Un compatibility rooms. ")
             if not HandlersTypes.in_types(room_type):
                 raise IncorrectHandlerType("Incorrect handler type")
-            room_handler = Handler(room_type, content_type, func)
+            room_handler = Handler(room_type, content_type, func, room_filter)
             room = Room(name, room_handler, kwargs, permissions)
             self.rooms.append(room)
             return {"func": func, "past_room_type": room.handler.handler_type}

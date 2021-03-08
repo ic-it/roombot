@@ -1,4 +1,5 @@
 import aiogram
+import asyncio
 
 from roombot import RoomsContainer
 from roombot import HandlersTypes
@@ -68,8 +69,14 @@ async def res(mess: aiogram.types.Message, rb: RoomsManager):
                       reply_markup=aiogram.types.ReplyKeyboardMarkup().add(admins_room_kb).add(start_button).add(get_admin_access_button))
 
 
+def an(message):
+    if message.text in ["lol", "Room2"]:
+        return True
+    return False
+
+
 @rc.add_room("start", HandlersTypes.on_join_message, content_type=["text"])
-@rc.add_room("start", HandlersTypes.message, content_type=["text"])
+@rc.add_room("start", HandlersTypes.message, content_type=["text"], room_filter=an)
 async def fun(mess: aiogram.types.Message, rb: RoomsManager):
     room2_text = "Room2"
     room2_button = aiogram.types.KeyboardButton(room2_text)

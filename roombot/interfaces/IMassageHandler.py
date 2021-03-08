@@ -2,5 +2,4 @@ import aiogram
 
 
 class IMessageHandler:
-    async def process_message(self, message: aiogram.types.Message): ...
-
+    async def process(self, message: aiogram.types.Message): ...

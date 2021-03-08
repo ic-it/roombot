@@ -24,16 +24,20 @@ class MainMessageHandler(IMessageHandler):
         self.internal_data = internal_data
         self.go_to_room = go_to_room
 
-    async def process_message(self, message: aiogram.types.Message):
+    async def process(self, message: aiogram.types.Message):
         user: User
-        user_is_at_one_of_rooms: bool = False
         user = await self.users.get_user_by_telegram_id(message.from_user.id)
-        for room in self.rooms.get(user.room, get_by_type=HandlersTypes.message):
-            if message.content_type in room.handler.content_type:
-                user_is_at_one_of_rooms = True
-                await run_room_function(room, message, self.internal_data, user)
-        if not user_is_at_one_of_rooms:
+        rooms = self.rooms.get(user.room, get_by_type=HandlersTypes.message)
+        if not len(rooms):
             await self.go_to_room(message.from_user.id, self.internal_data.start_room)
+            return
+        for room in rooms:
+            room_filter = True
+            if room.handler.room_filter:
+                room_filter = await run_func_as_async(room.handler.room_filter, message)
+            if message.content_type in room.handler.content_type:
+                if room_filter:
+                    await run_room_function(room, message, self.internal_data, user)
 
 
 class CheckUserMessageHandler(IMessageHandler):
@@ -41,7 +45,7 @@ class CheckUserMessageHandler(IMessageHandler):
         self.users = users
         self.internal_data = internal_data
 
-    async def process_message(self, message: aiogram.types.Message):
+    async def process(self, message: aiogram.types.Message):
         if not await self.users.get_user_by_telegram_id(message.from_user.id):
             user_to_add = User(message.from_user.id, message.from_user.first_name, message.from_user.last_name, self.internal_data.default_permissions, self.internal_data.start_room)
             await self.users.add_user(user_to_add)
@@ -54,19 +58,26 @@ class UserMigrationMessageRoom(IMessageHandler):
         self.internal_data = internal_data
         self.user_can_go_to_room = user_can_go_to_room
 
-    async def process_message(self, message: aiogram.types.Message):
+    async def process(self, message: aiogram.types.Message):
         user = await self.users.get_user_by_telegram_id(message.from_user.id)
         user_migration = self.internal_data.users_migrations.get(user.telegram_id)
         if not user_migration: return
         on_join_message_rooms = self.rooms.get(user_migration, get_by_type=HandlersTypes.on_join_message) + self.rooms.get(user_migration, get_by_type=HandlersTypes.on_join_universal)
         if on_join_message_rooms:
             for room in on_join_message_rooms:
+                room_filter = True
+                if room.handler.room_filter:
+                    room_filter = await run_func_as_async(room.handler.room_filter, message)
                 if self.user_can_go_to_room(user, room):
-                    await run_room_function(room, message, self.internal_data, user)
                     await self.users.set_user_room_by_telegram_id(user.telegram_id, user_migration)
+                if room_filter:
+                    await run_room_function(room, message, self.internal_data, user)
         else:
             for room in self.rooms.get(user_migration):
-                if self.user_can_go_to_room(user, room):
+                room_filter = True
+                if room.handler.room_filter:
+                    room_filter = await run_func_as_async(room.handler.room_filter, message)
+                if self.user_can_go_to_room(user, room) and room_filter:
                     await self.users.set_user_room_by_telegram_id(user.telegram_id, user_migration)
                     break
 

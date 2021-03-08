@@ -6,4 +6,4 @@ from .interfaces.IMassageHandler import IMessageHandler
 from .default_databases.sqlite_db import Sqlite3Database
 from .rooms_container.rooms_container import RoomsContainer
 from .default_bots.aiogram_middleware import AiogramMiddleWare
-
+from .interfaces.IErrorHandler import IErrorHandler

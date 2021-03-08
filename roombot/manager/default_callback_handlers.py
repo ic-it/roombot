@@ -24,7 +24,7 @@ class MainCallbackHandler(ICallbackHandler):
         self.internal_data = internal_data
         self.go_to_room = go_to_room
 
-    async def process_callback(self, callback: aiogram.types.CallbackQuery):
+    async def process(self, callback: aiogram.types.CallbackQuery):
         user: User
         user_is_at_one_of_rooms: bool = False
         user = await self.users.get_user_by_telegram_id(callback.from_user.id)
@@ -32,8 +32,12 @@ class MainCallbackHandler(ICallbackHandler):
         if not rooms:
             return
         for room in rooms:
-            user_is_at_one_of_rooms = True
-            await run_room_function(room, callback, self.internal_data, user)
+            room_filter = True
+            if room.handler.room_filter:
+                room_filter = await run_func_as_async(room.handler.room_filter, callback)
+            if room_filter:
+                user_is_at_one_of_rooms = True
+                await run_room_function(room, callback, self.internal_data, user)
         if not user_is_at_one_of_rooms:
             await self.go_to_room(callback.from_user.id, self.internal_data.start_room)
 
@@ -43,7 +47,7 @@ class CheckUserCallbackHandler(ICallbackHandler):
         self.users = users
         self.internal_data = internal_data
 
-    async def process_callback(self, callback: aiogram.types.CallbackQuery):
+    async def process(self, callback: aiogram.types.CallbackQuery):
         if not await self.users.get_user_by_telegram_id(callback.from_user.id):
             user_to_add = User(callback.from_user.id, callback.from_user.first_name, callback.from_user.last_name, self.internal_data.default_permissions, self.internal_data.start_room)
             await self.users.add_user(user_to_add)
@@ -56,19 +60,25 @@ class UserMigrationCallbackRoom(ICallbackHandler):
         self.internal_data = internal_data
         self.user_can_go_to_room = user_can_go_to_room
 
-    async def process_callback(self, callback: aiogram.types.CallbackQuery):
+    async def process(self, callback: aiogram.types.CallbackQuery):
         user = await self.users.get_user_by_telegram_id(callback.from_user.id)
         user_migration = self.internal_data.users_migrations.get(user.telegram_id)
         if not user_migration: return
         on_join_callback_rooms = self.rooms.get(user_migration, get_by_type=HandlersTypes.on_join_callback) + self.rooms.get(user_migration, get_by_type=HandlersTypes.on_join_universal)
         if on_join_callback_rooms:
             for room in on_join_callback_rooms:
-                if self.user_can_go_to_room(user, room):
+                room_filter = True
+                if room.handler.room_filter:
+                    room_filter = await run_func_as_async(room.handler.room_filter, callback)
+                if self.user_can_go_to_room(user, room) and room_filter:
                     await run_room_function(room, callback, self.internal_data, user)
                     await self.users.set_user_room_by_telegram_id(user.telegram_id, user_migration)
         else:
             for room in self.rooms.get(user_migration):
-                if self.user_can_go_to_room(user, room):
+                room_filter = True
+                if room.handler.room_filter:
+                    room_filter = await run_func_as_async(room.handler.room_filter, callback)
+                if self.user_can_go_to_room(user, room) and room_filter:
                     await self.users.set_user_room_by_telegram_id(user.telegram_id, user_migration)
                     break
 
