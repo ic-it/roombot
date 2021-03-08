@@ -12,7 +12,7 @@ setup(
     wheel="",
     name='roombot',
     description="Mini framework for creating bots with tracking the user's position in the so-called \"rooms\". Based on aiogram.",
-    version='0.0.20',
+    version='0.0.21',
     url='https://github.com/drogi17/roombot',
     author='ic_it',
     author_email='',
