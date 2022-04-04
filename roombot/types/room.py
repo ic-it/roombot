@@ -1,5 +1,5 @@
 from roombot.types.handler import Handler
-from typing import Any, List
+from typing import Any, List, Dict
 
 
 class Room:
@@ -8,7 +8,11 @@ class Room:
     handler: Handler
     permissions: List[str or None]
 
-    def __init__(self, room_name: str, room_handler: Handler, kwargs: dict, permissions: List[str or None]):
+    def __init__(self,
+                 room_name: str,
+                 room_handler: Handler,
+                 kwargs: dict,
+                 permissions: List[str or None]):
         self.name    = room_name
         self.kwargs  = kwargs
         self.handler = room_handler
@@ -21,7 +25,7 @@ class RoomsStack:
         1. Есть имя, оно как ключ в dict
         2. Этому имени соотвецтвует dict. В котором ключ это тип, а value - это комнаты.
     """
-    rooms: dict[str, dict[int, List[Room]]]
+    rooms: Dict[str, Dict[int, List[Room]]]
 
     def __init__(self):
         self.rooms = {}
@@ -36,7 +40,7 @@ class RoomsStack:
                 self.rooms[room.name][room.handler.handler_type] = []
             self.rooms[room.name][room.handler.handler_type].append(room)
 
-    def get(self, room_name: str, get_by_type: int = None) -> List[Room]:
+    def get_by_name(self, room_name: str, get_by_type: int = None):
         rooms_by_name = self.rooms.get(room_name)
         if rooms_by_name is None:
             return []
@@ -46,3 +50,6 @@ class RoomsStack:
         for i in rooms_by_name:
             return_list += rooms_by_name.get(i)
         return return_list
+
+    def get(self, room_name: str, get_by_type: int = None) -> List[Room]:
+        return self.get_by_name("", get_by_type) + self.get_by_name(room_name, get_by_type)

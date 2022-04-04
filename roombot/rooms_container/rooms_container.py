@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any
 from roombot.types.room import Room
 from roombot.types.handler import Handler
 from roombot.types.handler import HandlersTypes
@@ -11,7 +11,13 @@ class RoomsContainer:
     def __init__(self):
         self.rooms = []
 
-    def add_room(self, name: str, room_type: int, content_type=None, permissions=None, room_filter=None, **kwargs):
+    def add_room(self,
+                 name: str,
+                 room_type: int,
+                 content_type=None,
+                 permissions=None,
+                 room_filter=None,
+                 **kwargs):
         if content_type is None:
             content_type = []
         if permissions is None:

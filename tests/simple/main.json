@@ -1,0 +1,46 @@
+{
+    "start": {
+        "buttons": [
+            {
+                "goto": "room1",
+                "label": {
+                    "en": "Room 1",
+                    "ru": "Комната 1"
+                },
+                "answer": {
+                    "en": "Moved to Room 1",
+                    "ru": "Перешли в Комнату 1"
+                }
+            },
+            {
+                "label": {
+                    "en": "Say hi",
+                    "ru": "Привет сказать"
+                },
+                "answer": {
+                    "en": "Hi!",
+                    "ru": "Привет!"
+                }
+            }
+        ],
+        "answer": {
+            "en": "Start",
+            "ru": "Старт"
+        }
+    },
+    "room1": {
+        "buttons": [
+            {
+                "goto": "start",
+                "label": {
+                    "en": "Go Home",
+                    "ru": "Домой"
+                }
+            }
+        ],
+        "answer": {
+            "en": "Room 1",
+            "ru": "Комната 1"
+        }
+    }
+}

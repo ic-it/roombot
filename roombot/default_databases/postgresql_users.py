@@ -6,7 +6,7 @@ from roombot.types.datatypes import User
 from typing import List
 
 
-class Sqlite3Users(IUsersTable):
+class PostgreSQLUsers(IUsersTable):
     def __init__(self, database: databases.Database, additional_columns: List[sqlalchemy.Column] = None):
         if not additional_columns:
             additional_columns = []
@@ -29,6 +29,7 @@ class Sqlite3Users(IUsersTable):
         query1 = (
             self.users_table.insert()
             .values(**user.as_dict())
+            .returning(self.users_table.c.id)
         )
         query2 = (
             self.users_table.select()
@@ -37,12 +38,9 @@ class Sqlite3Users(IUsersTable):
 
         uid = await self.database.fetch_one(query2)
         if uid:
-            user.id = uid.id
+            user.id = uid.get("id")
             return user
-        else:
-            await self.database.fetch_one(query1)
-        uid = await self.database.fetch_one(query2)
-        user.id = uid.id
+        user.id = (await self.database.fetch_one(query1)).get("id")
         return user
 
     async def get_user_by_id(self, user_id: int) -> (User or None):

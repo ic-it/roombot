@@ -3,10 +3,12 @@ import sqlalchemy
 
 from roombot.interfaces.IUsersTable import IUsersTable
 from roombot.types.datatypes import User
+from roombot.utils.database import AutoCreateTables
+from .default_tables import users as default_users_columns
 from typing import List
 
 
-class Sqlite3Users(IUsersTable):
+class PostgreSQLUsers(IUsersTable, AutoCreateTables):
     def __init__(self, database: databases.Database, additional_columns: List[sqlalchemy.Column] = None):
         if not additional_columns:
             additional_columns = []
@@ -16,19 +18,16 @@ class Sqlite3Users(IUsersTable):
         self.users_table = sqlalchemy.Table(
                         "users",
                         self.metadata,
-                        sqlalchemy.Column("id",             sqlalchemy.Integer, primary_key=True),
-                        sqlalchemy.Column("telegram_id",    sqlalchemy.Integer),
-                        sqlalchemy.Column("firstname",      sqlalchemy.String()),
-                        sqlalchemy.Column("lastname",       sqlalchemy.String()),
-                        sqlalchemy.Column("permissions",    sqlalchemy.String()),
-                        sqlalchemy.Column("room",           sqlalchemy.String()),
+                        *default_users_columns,
                         *additional_columns
         )
+        self.init_users_table(default_users_columns, additional_columns)
 
     async def add_user(self, user: User) -> User:
         query1 = (
             self.users_table.insert()
             .values(**user.as_dict())
+            .returning(self.users_table.c.id)
         )
         query2 = (
             self.users_table.select()
@@ -37,12 +36,9 @@ class Sqlite3Users(IUsersTable):
 
         uid = await self.database.fetch_one(query2)
         if uid:
-            user.id = uid.id
+            user.id = uid.get("id")
             return user
-        else:
-            await self.database.fetch_one(query1)
-        uid = await self.database.fetch_one(query2)
-        user.id = uid.id
+        user.id = (await self.database.fetch_one(query1)).get("id")
         return user
 
     async def get_user_by_id(self, user_id: int) -> (User or None):

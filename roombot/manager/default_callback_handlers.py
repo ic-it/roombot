@@ -1,11 +1,12 @@
 import aiogram
 
 from roombot.interfaces.ICallbackHandler import ICallbackHandler
-from roombot.types.dataclasses import User
+from roombot.types.datatypes import User
 from roombot.types.handler import HandlersTypes
 from roombot.interfaces.IUsersTable import IUsersTable
 from roombot.types.room import Room
 from roombot.utils.runfunc import run_func_as_async, get_kwargs_by_annotations, get_only_the_required_arguments
+from roombot.types.manager import IRoomsManager
 
 
 async def run_room_function(room: Room, callback: aiogram.types.CallbackQuery, internal_data, user: User):
@@ -24,7 +25,8 @@ class MainCallbackHandler(ICallbackHandler):
         self.internal_data = internal_data
         self.go_to_room = go_to_room
 
-    async def process(self, callback: aiogram.types.CallbackQuery):
+    async def process(self, callback: aiogram.types.CallbackQuery, **kwargs):
+        rooms_manager = kwargs.get("rooms_manager")
         user: User
         user_is_at_one_of_rooms: bool = False
         user = await self.users.get_user_by_telegram_id(callback.from_user.id)
@@ -34,7 +36,16 @@ class MainCallbackHandler(ICallbackHandler):
         for room in rooms:
             room_filter = True
             if room.handler.room_filter:
-                room_filter = await run_func_as_async(room.handler.room_filter, callback)
+                room_filter_kwargs = {
+                    aiogram.types.CallbackQuery: callback,
+                    IRoomsManager: rooms_manager
+                }
+                room_filter = await run_func_as_async(room.handler.room_filter,
+                                                      **get_kwargs_by_annotations(
+                                                          room.handler.room_filter,
+                                                          room_filter_kwargs
+                                                      )
+                )
             if room_filter:
                 user_is_at_one_of_rooms = True
                 await run_room_function(room, callback, self.internal_data, user)
@@ -47,7 +58,7 @@ class CheckUserCallbackHandler(ICallbackHandler):
         self.users = users
         self.internal_data = internal_data
 
-    async def process(self, callback: aiogram.types.CallbackQuery):
+    async def process(self, callback: aiogram.types.CallbackQuery, **kwargs):
         if not await self.users.get_user_by_telegram_id(callback.from_user.id):
             user_to_add = User(callback.from_user.id, callback.from_user.first_name, callback.from_user.last_name, self.internal_data.default_permissions, self.internal_data.start_room)
             await self.users.add_user(user_to_add)
@@ -60,7 +71,8 @@ class UserMigrationCallbackRoom(ICallbackHandler):
         self.internal_data = internal_data
         self.user_can_go_to_room = user_can_go_to_room
 
-    async def process(self, callback: aiogram.types.CallbackQuery):
+    async def process(self, callback: aiogram.types.CallbackQuery, **kwargs):
+        rooms_manager = kwargs.get("rooms_manager")
         user = await self.users.get_user_by_telegram_id(callback.from_user.id)
         user_migration = self.internal_data.users_migrations.get(user.telegram_id)
         if not user_migration: return
@@ -69,7 +81,16 @@ class UserMigrationCallbackRoom(ICallbackHandler):
             for room in on_join_callback_rooms:
                 room_filter = True
                 if room.handler.room_filter:
-                    room_filter = await run_func_as_async(room.handler.room_filter, callback)
+                    room_filter_kwargs = {
+                        aiogram.types.CallbackQuery: callback,
+                        IRoomsManager: rooms_manager
+                    }
+                    room_filter = await run_func_as_async(room.handler.room_filter,
+                                                          **get_kwargs_by_annotations(
+                                                              room.handler.room_filter,
+                                                              room_filter_kwargs
+                                                          )
+                                                          )
                 if self.user_can_go_to_room(user, room) and room_filter:
                     await run_room_function(room, callback, self.internal_data, user)
                     await self.users.set_user_room_by_telegram_id(user.telegram_id, user_migration)
@@ -77,7 +98,16 @@ class UserMigrationCallbackRoom(ICallbackHandler):
             for room in self.rooms.get(user_migration):
                 room_filter = True
                 if room.handler.room_filter:
-                    room_filter = await run_func_as_async(room.handler.room_filter, callback)
+                    room_filter_kwargs = {
+                        aiogram.types.CallbackQuery: callback,
+                        IRoomsManager: rooms_manager
+                    }
+                    room_filter = await run_func_as_async(room.handler.room_filter,
+                                                          **get_kwargs_by_annotations(
+                                                              room.handler.room_filter,
+                                                              room_filter_kwargs
+                                                          )
+                                                          )
                 if self.user_can_go_to_room(user, room) and room_filter:
                     await self.users.set_user_room_by_telegram_id(user.telegram_id, user_migration)
                     break

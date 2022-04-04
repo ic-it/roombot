@@ -59,18 +59,18 @@ class HandlersStack:
     def __init__(self):
         self.handlers = []
 
-    def add(self, handler: handlers_interface):
+    def add(self, handler: handlers_interface, position_in_stack: int = None):
         if not isinstance(handler, self.handlers_interface):
             raise Exception("Incorrect handler type")
         else:
-            self.handlers.append(handler)
+            if position_in_stack is not None:
+                self.handlers.insert(position_in_stack, handler)
+            else:
+                self.handlers.append(handler)
             return self
 
     def get_all(self):
-        loaded_handlers = []
-        for i in self.handlers:
-            loaded_handlers.append(i.process)
-        return loaded_handlers
+        return [i.process for i in self.handlers]
 
 
 class MessageHandlersStack(HandlersStack):
@@ -83,3 +83,8 @@ class CallbackHandlersStack(HandlersStack):
 
 class ErrorHandlerStack(HandlersStack):
     handlers_interface: IErrorHandler = IErrorHandler
+
+
+class PreCheckoutQueryHandlerStack(HandlersStack):
+    handlers_interface: IHandler = IHandler
+

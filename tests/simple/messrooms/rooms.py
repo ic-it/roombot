@@ -69,7 +69,8 @@ async def res(mess: aiogram.types.Message, rb: RoomsManager):
                       reply_markup=aiogram.types.ReplyKeyboardMarkup().add(admins_room_kb).add(start_button).add(get_admin_access_button))
 
 
-def an(message):
+def an(message: aiogram.types.Message):
+    return True
     if message.text in ["lol", "Room2"]:
         return True
     return False

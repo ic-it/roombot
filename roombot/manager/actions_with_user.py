@@ -1,4 +1,4 @@
-from roombot.types.dataclasses import User
+from roombot.types.datatypes import User
 from roombot.types.room import Room, RoomsStack
 from roombot.interfaces.IUsersTable import IUsersTable
 
@@ -29,11 +29,17 @@ class ActionsWithUser:
         elif isinstance(user, int):
             await self.users.set_user_permission_by_telegram_id(user, permissions)
 
-    async def get_permissions(self, user: User or int):
+    async def get_user(self, user: User or int) -> User:
         if isinstance(user, User):
-            return (await self.users.get_user_by_telegram_id(user.telegram_id)).permissions
+            return await self.users.get_user_by_telegram_id(user.telegram_id)
         elif isinstance(user, int):
-            return (await self.users.get_user_by_telegram_id(user)).permissions
+            return await self.users.get_user_by_telegram_id(user)
+
+    async def get_permissions(self, user: User or int) -> str or None:
+        user_data = await self.get_user(user)
+        if user_data:
+            return user_data.permissions
+        return None
 
     def user_can_go_to_room(self, user: User, room: Room):
         myif = (user.permissions in room.permissions or ((user.permissions == self.internal_data.default_permissions or not len(user.permissions)) and not len(room.permissions))) or not len(room.permissions)
