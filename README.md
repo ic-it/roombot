@@ -1,7 +1,6 @@
 <h1 align="center"> RoomBot </h1>
-<p align="center">Библиотека для интуитивно понятного взаимодействия с пользователем</p>
 <a href="https://www.repostatus.org/#abandoned"><img src="https://www.repostatus.org/badges/latest/abandoned.svg" alt="Project Status: Abandoned – Initial development has started, but there has not yet been a stable, usable release; the project has been abandoned and the author(s) do not intend on continuing development." /></a>
-
+<p align="center">Библиотека для интуитивно понятного взаимодействия с пользователем</p>
 
 ## Основные концепции:
 * Пользователь всегда находится в какой-то комнате.
